@@ -265,7 +265,8 @@ function RegisterForm() {
               </Link>{' '}
               and{' '}
               <Link
-                href="/privacy"
+
+href="/privacy"
                 className="text-primary-600 hover:text-primary-500"
               >
                 Privacy Policy
