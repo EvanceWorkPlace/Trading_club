@@ -1,14 +1,11 @@
-"""
-Custom User Manager for InvestClub.
-"""
 from django.contrib.auth.models import BaseUserManager
 
 
 class UserManager(BaseUserManager):
-    """Custom user manager with email as identifier."""
+    #Custom user manager with email as identifier.
     
     def create_user(self, email, password=None, **extra_fields):
-        """Create and save a regular user."""
+       #Create and save a regular user.
         if not email:
             raise ValueError('Email address is required')
         
@@ -24,7 +21,7 @@ class UserManager(BaseUserManager):
         return user
     
     def create_superuser(self, email, password=None, **extra_fields):
-        """Create and save a superuser."""
+        #Create and save a superuser.
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)

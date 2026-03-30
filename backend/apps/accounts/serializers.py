@@ -1,6 +1,3 @@
-"""
-Serializers for accounts app.
-"""
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
@@ -12,7 +9,7 @@ User = get_user_model()
 
 
 class WalletSerializer(serializers.ModelSerializer):
-    """Serializer for Wallet model."""
+    #Serializer for Wallet model.
     
     class Meta:
         model = Wallet
@@ -25,7 +22,7 @@ class WalletSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User model."""
+    #Serializer for User model.
     wallet = WalletSerializer(read_only=True)
     
     class Meta:
@@ -39,7 +36,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    """Serializer for user registration."""
+    #Serializer for user registration
     password = serializers.CharField(
         write_only=True, 
         min_length=8,
@@ -58,7 +55,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         ]
     
     def validate(self, attrs):
-        """Validate passwords match."""
+    #Validate passwords match.
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError(
                 {'password_confirm': 'Passwords do not match.'}
@@ -66,14 +63,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-        """Create new user."""
+        #Create new user.
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
         return user
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating user profile."""
+    #Serializer for updating user profile.
     
     class Meta:
         model = User
@@ -81,7 +78,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
 
 class DepositSerializer(serializers.Serializer):
-    """Serializer for depositing funds."""
+    #Serializer for depositing funds.
     amount = serializers.DecimalField(
         max_digits=15,
         decimal_places=2,
@@ -89,7 +86,7 @@ class DepositSerializer(serializers.Serializer):
     )
     
     def validate_amount(self, value):
-        """Validate minimum deposit amount."""
+        #Validate minimum deposit amount.
         if value < Decimal('10.00'):
             raise serializers.ValidationError(
                 'Minimum deposit amount is $10.00'
@@ -98,13 +95,13 @@ class DepositSerializer(serializers.Serializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    """Serializer for changing password."""
+    #Serializer for changing password.
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True, min_length=8)
     new_password_confirm = serializers.CharField(required=True)
     
     def validate(self, attrs):
-        """Validate new passwords match."""
+        #Validate new passwords match
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError(
                 {'new_password_confirm': 'Passwords do not match.'}
@@ -113,5 +110,5 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class GoogleAuthSerializer(serializers.Serializer):
-    """Serializer for Google OAuth authentication."""
+    #Serializer for Google OAuth authentication.
     access_token = serializers.CharField(required=True)

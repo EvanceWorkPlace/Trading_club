@@ -1,6 +1,3 @@
-"""
-User and Wallet models for InvestClub.
-"""
 import uuid
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
@@ -11,7 +8,7 @@ from .managers import UserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """Custom User model with email as primary identifier."""
+    #Custom User model with email as primary identifier.
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, db_index=True)
@@ -52,14 +49,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     @property
     def wallet_balance(self):
-        """Get user's wallet balance."""
+        #Get user's wallet balance.
         if hasattr(self, 'wallet'):
             return self.wallet.balance
         return 0.00
 
 
 class Wallet(models.Model):
-    """User wallet for managing virtual funds."""
+    #User wallet for managing virtual funds.
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
@@ -102,7 +99,7 @@ class Wallet(models.Model):
         return f"{self.user.email} - ${self.balance}"
     
     def deposit(self, amount):
-        """Add funds to wallet."""
+        #Add funds to wallet.
         from decimal import Decimal
         amount = Decimal(str(amount))
         self.balance += amount
@@ -111,7 +108,7 @@ class Wallet(models.Model):
         return True
     
     def withdraw(self, amount):
-        """Remove funds from wallet."""
+        #Remove funds from wallet.
         from decimal import Decimal
         amount = Decimal(str(amount))
         if self.balance >= amount:
@@ -121,7 +118,7 @@ class Wallet(models.Model):
         return False
     
     def contribute(self, amount):
-        """Deduct contribution from wallet."""
+        #Deduct contribution from wallet
         from decimal import Decimal
         amount = Decimal(str(amount))
         if self.balance >= amount:
@@ -132,7 +129,7 @@ class Wallet(models.Model):
         return False
     
     def add_earnings(self, amount):
-        """Add profit share to wallet."""
+        #Add profit share to wallet.
         from decimal import Decimal
         amount = Decimal(str(amount))
         self.balance += amount
