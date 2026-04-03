@@ -6,18 +6,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security settings
 
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 # if not SECRET_KEY:
 #     # In production, requiring SECRET_KEY avoids insecure defaults
 #     raise RuntimeError('SECRET_KEY is not set in environment')
 
-DEBUG = os.getenv('DEBUG', 'False').lower() in ('1', 'true', 'yes')
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 # Allow localhost during development if no hosts configured
-if not ALLOWED_HOSTS and DEBUG:
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# if not ALLOWED_HOSTS and DEBUG:
+#     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Application definition
 DJANGO_APPS = [
@@ -53,7 +54,8 @@ LOCAL_APPS = [
 ]
 
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+# Ensure custom user app migrations run before allauth account migrations
+INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -95,11 +97,10 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=not DEBUG  # require SSL in production-like envs
-        )
+         'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
 else: 
     # Local development fallback (sqlite) to avoid external host resolution failures
@@ -195,8 +196,8 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 
 # Authentication
-AUTH_USER_MODEL = 'accounts.User'
 
+AUTH_USER_MODEL = 'accounts.User'
 # django-allauth settings
 SITE_ID = 1
 # ACCOUNT_EMAIL_VERIFICATION = 'none'
@@ -227,7 +228,6 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     }
 }
-
 # Redis & Celery
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
 CELERY_BROKER_URL = REDIS_URL

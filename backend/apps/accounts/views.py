@@ -4,6 +4,9 @@ from rest_framework import status, generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
@@ -19,8 +22,22 @@ from apps.transactions.models import Transaction
 User = get_user_model()
 
 
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    # Ensure email-based USERNAME_FIELD works with simplejwt login.
+    username_field = User.USERNAME_FIELD
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user'] = UserSerializer(self.user).data
+        return data
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+
 def get_tokens_for_user(user):
-    #Generate JWT tokens for user.
+    # Generate JWT tokens for user.
     refresh = RefreshToken.for_user(user)
     return {
         'refresh': str(refresh),
@@ -29,18 +46,27 @@ def get_tokens_for_user(user):
 
 
 class RegisterView(generics.CreateAPIView):
-    #User registration endpoint.
+    # User registration endpoint.
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
-    
+
     def create(self, request, *args, **kwargs):
+        # Keep arg names in signature for compatibility with DRF internals.
+        _ = args
+        _ = kwargs
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        
+
         tokens = get_tokens_for_user(user)
-        
+        print(f"User {user.email} registered successfully. Tokens: {tokens}")
+
+        # In case wallet is missing (defensive), create it on registration.
+        if not hasattr(user, 'wallet'):
+            Wallet.objects.create(user=user)
+
         return Response({
             'user': UserSerializer(user).data,
             'tokens': tokens,
@@ -132,54 +158,72 @@ def change_password(request):
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def google_auth(request):
-    #Authenticate user with Google OAuth.
+    # Authenticate user with Google OAuth.
     serializer = GoogleAuthSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    access_token = serializer.validated_data['access_token']
-    
-    # Verify token with Google
+
+    token = serializer.validated_data['token']
+    token_type = serializer.validated_data.get('token_type', 'id_token')
+
+    user_data = None
+
     try:
-        response = requests.get(
-            'https://www.googleapis.com/oauth2/v3/userinfo',
-            headers={'Authorization': f'Bearer {access_token}'}
-        )
-        response.raise_for_status()
-        user_data = response.json()
+        if token_type == 'id_token':
+            # ID token can be verified using Google's tokeninfo endpoint
+            response = requests.get(
+                'https://oauth2.googleapis.com/tokeninfo',
+                params={'id_token': token},
+                timeout=10,
+            )
+            response.raise_for_status()
+            user_data = response.json()
+        else:
+            # access_token: fetch userinfo from Google API
+            response = requests.get(
+                'https://www.googleapis.com/oauth2/v3/userinfo',
+                headers={'Authorization': f'Bearer {token}'},
+                timeout=10,
+            )
+            response.raise_for_status()
+            user_data = response.json()
     except requests.RequestException:
         return Response(
             {'error': 'Invalid Google token'},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     email = user_data.get('email')
-    google_id = user_data.get('sub')
+    google_id = user_data.get('sub') or user_data.get('user_id')
     first_name = user_data.get('given_name', '')
     last_name = user_data.get('family_name', '')
-    
-    # Get or create user
-    try:
-        user = User.objects.get(email=email)
-        # Update Google ID if not set
-        if not user.google_id:
-            user.google_id = google_id
-            user.save()
-    except User.DoesNotExist:
-        user = User.objects.create_user(
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            google_id=google_id,
-            is_email_verified=True
+
+    if not email or not google_id:
+        return Response(
+            {'error': 'Google account data is incomplete'},
+            status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
+    user, created = User.objects.get_or_create(
+        email=email,
+        defaults={
+            'first_name': first_name,
+            'last_name': last_name,
+            'google_id': google_id,
+            'is_email_verified': True,
+        },
+    )
+
+    if not created and not user.google_id:
+        user.google_id = google_id
+        user.save(update_fields=['google_id'])
+
     tokens = get_tokens_for_user(user)
-    
+
     return Response({
         'user': UserSerializer(user).data,
         'tokens': tokens,
-        'message': 'Authenticated successfully'
+        'message': 'Google authentication successful',
     })
 
 

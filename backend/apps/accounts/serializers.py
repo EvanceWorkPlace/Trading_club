@@ -111,4 +111,10 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class GoogleAuthSerializer(serializers.Serializer):
     #Serializer for Google OAuth authentication.
-    access_token = serializers.CharField(required=True)
+    # Supports both OAuth access_token (Bearer) and OpenID id_token (JWT).
+    token = serializers.CharField(required=True)
+    token_type = serializers.ChoiceField(
+        choices=['access_token', 'id_token'],
+        default='id_token',
+        required=False,
+    )
